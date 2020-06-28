@@ -1,6 +1,7 @@
 # esquery
 
-[![](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue&style=flat-square)](https://godoc.org/github.com/aquasecurity/esquery) [![](https://img.shields.io/github/license/aquasecurity/esquery?style=flat-square)](LICENSE)
+[![](https://img.shields.io/static/v1?label=godoc&message=reference&color=blue&style=flat-square)](https://godoc.org/github.com/aquasecurity/esquery) [![](https://img.shields.io/github/license/aquasecurity/esquery?style=flat-square)](LICENSE) [![Build Status](https://travis-ci.org/aquasecurity/esquery.svg?branch=master)](https://travis-ci.org/aquasecurity/esquery)
+
 
 **A non-obtrusive, idiomatic and easy-to-use query and aggregation builder for the [official Go client](https://github.com/elastic/go-elasticsearch) for [ElasticSearch](https://www.elastic.co/products/elasticsearch).**
 
@@ -56,42 +57,34 @@ import (
 
 func main() {
     // connect to an ElasticSearch instance
-	es, err := elasticsearch.NewDefaultClient()
-	if err != nil {
-		log.Fatalf("Failed creating client: %s", err)
-	}
+    es, err := elasticsearch.NewDefaultClient()
+    if err != nil {
+        log.Fatalf("Failed creating client: %s", err)
+    }
 
     // run a boolean search query
-	qRes, err := esquery.Query(
-		esquery.
-			Bool().
-			Must(esquery.Term("title", "Go and Stuff")).
-			Filter(esquery.Term("tag", "tech")),
-    ).Run(
-        es, 
-		es.Search.WithContext(context.TODO()),
-		es.Search.WithIndex("test"),
-	)
-	if err != nil {
-		log.Fatalf("Failed searching for stuff: %s", err)
-	}
+    res, err := esquery.Search().
+        Query(
+            esquery.
+                Bool().
+                Must(esquery.Term("title", "Go and Stuff")).
+                Filter(esquery.Term("tag", "tech")),
+        ).
+        Aggs(
+            esquery.Avg("average_score", "score"),
+            esquery.Max("max_score", "score"),
+        ).
+        Size(20).
+        Run(
+            es, 
+            es.Search.WithContext(context.TODO()),
+            es.Search.WithIndex("test"),
+        )
+        if err != nil {
+            log.Fatalf("Failed searching for stuff: %s", err)
+        }
 
-	defer qRes.Body.Close()
-
-	// run an aggregation
-	aRes, err := esquery.Aggregate(
-		esquery.Avg("average_score", "score"),
-		esquery.Max("max_score", "score"),
-	).Run(
-		es,
-		es.Search.WithContext(context.TODO()),
-		es.Search.WithIndex("test"),
-	)
-	if err != nil {
-		log.Fatalf("Failed searching for stuff: %s", err)
-	}
-
-	defer aRes.Body.Close()
+    defer res.Body.Close()
 
     // ...
 }
@@ -162,6 +155,8 @@ The following aggregations are currently supported:
 | `"percentiles"`         | `Percentiles()`       |
 | `"stats"`               | `Stats()`             |
 | `"string_stats"`        | `StringStats()`       |
+| `"top_hits"`            | `TopHits()`           |
+| `"terms"`               | `TermsAgg()`          |
 
 #### Custom Queries and Aggregations
 
